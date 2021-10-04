@@ -19,22 +19,26 @@ def get_data():
 
 # ***STREAMLIT BODY***
 with header_container:
-    st.header('DBNR FCC - PANCOR')
-    st.subheader('Steel Structure Progress, General and by Areas')
-    st.write(
+    title_col, input_col = st.beta_columns(2)
+    title_col.header('DBNR FCC - PANCOR')
+    title_col.subheader('Steel Structure Progress, General and by Areas')
+    title_col.markdown(
         """
-        - Purple = Delivered by Samsung to Laydown area
-        - Orange = Issued from Laydown area to FCC site
-        - Green = Erected'
+        Steps:
+        - **_Delivered_** = Delivered by Samsung to Laydown area (**purple**)
+        - **_Issued_** = Issued from Laydown area to FCC site (**orange**)
+        - **_Erected_** = Erected at FCC site (**green**)
         """)
+    input_col.subheader('Setup Parameters')
+    time_scale = input_col.selectbox('Select time scale:', options=['Day', 'Week', 'Month'], index=0)
+    st.markdown("""---""")
 
 with visualization_container:
-    
-    time_scale = st.selectbox('Select time scale:', options=['Day', 'Week', 'Month'], index=0)
-    data = get_data()
     # ***DATA LOAD***
+    data = get_data()
     dates_cols = ['DEL_DATE', 'ISS_DATE', 'ERE_DATE']
     time_scale_dict = {'Day': '1D', 'Week': '1W', 'Month':'1M'}
+    steps_dict = {'DEL_DATE': 'Delivered', 'ISS_DATE': 'Issued', 'ERE_DATE':'Erected'}
     #%% ***TIME SCALE***
     dates = pd.date_range(start=data[dates_cols].min().min(), end=data[dates_cols].max().max(), freq=time_scale_dict[time_scale])
     # ***DATA PROCESSING COUNT ITEMS***
@@ -84,20 +88,25 @@ with visualization_container:
     for idx, area in enumerate(areas, start=1):
         for idj, date_col in enumerate(dates_cols):
             df = table_collection_ci[date_col]
-            fig.add_trace(go.Bar(x=df['DATE'], y=df[area], marker_color=colors[idj], showlegend=False), row=idx, col=1)
+            fig.add_trace(go.Bar(x=df['DATE'], y=df[area], marker_color=colors[idj], showlegend=False, text=[*[steps_dict[date_col]]*len(df.index)], hovertemplate=
+                "<b>Step: %{text}</b><br>" +
+                "Date: %{x|%d-%b-%Y}<br>" +
+                "Progress: %{y:.00%}<br>" +
+                "<extra></extra>"), row=idx, col=1)
             fig.update_yaxes(showgrid=True, tickvals=[0, 0.25, 0.5, 0.75, 1], tickformat='.0%', row=idx, col=1)
             fig.update_xaxes(tickformat='%d-%b', row=idx, col=1)
 
     for idx, area in enumerate(areas, start=1):
         for idj, date_col in enumerate(dates_cols):
             df = table_collection_sw[date_col]
-            fig.add_trace(go.Bar(x=df['DATE'], y=df[area], marker_color=colors[idj], showlegend=False), row=idx, col=2)
+            fig.add_trace(go.Bar(x=df['DATE'], y=df[area], marker_color=colors[idj], showlegend=False, text=[*[steps_dict[date_col]]*len(df.index)], hovertemplate=
+                "<b>Step: %{text}</b><br>" +
+                "Date: %{x|%d-%b-%Y}<br>" +
+                "Progress: %{y:.00%}<br>" +
+                "<extra></extra>"), row=idx, col=2)
             fig.update_yaxes(showgrid=True, tickvals=[0, 0.25, 0.5, 0.75, 1], tickformat='.0%', row=idx, col=2)
             fig.update_xaxes(tickformat='%d-%b', row=idx, col=2)
 
     fig.update_yaxes(range=[0,1])
     fig.update_layout(title_text='FCC Structure Areas Progress', barmode='overlay', bargap=0.0, height=3000)
     st.plotly_chart(fig, use_container_width=True)
-    
-#%% ***DATA CHECK***
-data['CHECK'] = (data['ISS_DATE']>=data['DEL_DATE'])&(data['ERE_DATE']>=data['ISS_DATE'])
